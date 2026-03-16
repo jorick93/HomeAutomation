@@ -1,0 +1,18 @@
+type: grid
+columns: 3
+square: false
+cards:
+  - type: custom:button-card
+    name: Wasmachine
+    entity: sensor.wasmachine_plug_current_consumption
+    icon: mdi:washing-machine
+    show_state: true
+    state_display: "[[[ const v = Number(entity.state); return isFinite(v) ? `${v} W` : 'Unavailable'; ]]]
+    styles:
+      card:
+        - height: 110px
+        - color: white
+        - background-color: "[[[ const v = Number(entity.state); return !isFinite(v) ? 'gray' : v < 1 ? 'green' : v < 100 ? 'orange' : 'red'; ]]]"
+      icon:
+        - color: white
+        - width: 40px

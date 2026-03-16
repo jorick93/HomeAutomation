@@ -1,0 +1,88 @@
+blueprint:
+  name: Motion light with lux threshold
+  description: >
+    Turn a light/switch on when motion is detected and illuminance is below a threshold.
+    Turn it off when motion stops (optionally after a delay).
+  domain: automation
+  input:
+    motion_sensor:
+      name: Motion sensor
+      selector:
+        entity:
+          domain: binary_sensor
+
+    target_switch:
+      name: Light / switch to control
+      selector:
+        entity:
+          domain:
+            - light
+            - switch
+
+    lux_sensor:
+      name: Illuminance sensor (optional)
+      default: ""
+      selector:
+        entity:
+          domain: sensor
+
+    lux_threshold:
+      name: Lux threshold
+      default: 150
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 1
+          mode: slider
+          unit_of_measurement: lx
+
+    off_delay:
+      name: Off delay (optional)
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 5
+          mode: slider
+          unit_of_measurement: seconds
+
+mode: restart
+
+trigger:
+  - platform: state
+    entity_id: !input motion_sensor
+
+variables:
+  motion: !input motion_sensor
+  lux: !input lux_sensor
+  threshold: !input lux_threshold
+  delay_off: !input off_delay
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ is_state(motion, 'on')
+                 and (lux == '' or (states(lux) | float(99999)) < threshold) }}
+        sequence:
+          - service: homeassistant.turn_on
+            target:
+              entity_id: !input target_switch
+
+      - conditions:
+          - condition: template
+            value_template: "{{ is_state(motion, 'off') }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ (delay_off | int(0)) > 0 }}"
+                sequence:
+                  - delay:
+                      seconds: !input off_delay
+          - service: homeassistant.turn_off
+            target:
+              entity_id: !input target_switch

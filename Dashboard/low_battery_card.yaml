@@ -1,0 +1,44 @@
+# ============================================================
+# Low Battery Overview Card
+#
+# Requirements:
+# - Home Assistant
+# - HACS installed
+# - Custom card: auto-entities
+#
+# Installation steps:
+# 1. Install HACS (if not already installed)
+#    https://hacs.xyz/
+#
+# 2. Install "Auto-Entities Card" via HACS:
+#    HACS → Frontend → Explore & Download Repositories
+#    Search for: auto-entities
+#
+# 3. Restart Home Assistant after installation
+#
+# 4. Add this card to your Lovelace dashboard
+#
+# What this card does:
+# - Automatically finds all entities containing "battery"
+# - Shows only those with a value below 10%
+# - Excludes unavailable or unknown sensors
+# ============================================================
+
+type: custom:auto-entities
+card:
+  type: entities
+  title: Low batteries
+  show_header_toggle: false
+
+filter:
+  include:
+    - entity_id: "*battery*"
+      state: "< 10"
+
+  exclude:
+    - state: unknown
+    - state: unavailable
+
+sort:
+  method: state
+  numeric: true

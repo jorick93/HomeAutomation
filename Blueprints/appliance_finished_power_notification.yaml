@@ -1,0 +1,123 @@
+blueprint:
+  name: Appliance finished notification
+  description: >
+    Sends a notification when an appliance first becomes active above a
+    configurable power level and then remains below a lower threshold long
+    enough to be considered finished.
+
+  domain: automation
+
+  input:
+    power_sensor:
+      name: Power sensor
+      description: Sensor that reports the current power usage of the appliance.
+      selector:
+        entity:
+          domain: sensor
+
+    appliance_name:
+      name: Appliance name
+      description: Name used in the default notification content.
+      default: Appliance
+      selector:
+        text: {}
+
+    start_threshold:
+      name: Start threshold
+      description: >
+        The appliance must rise above this value before a finish notification
+        can be sent.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 0.1
+          mode: box
+          unit_of_measurement: W
+
+    finish_threshold:
+      name: Finish threshold
+      description: >
+        The appliance is considered finished when power stays below this value.
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 0.1
+          mode: box
+          unit_of_measurement: W
+
+    finish_duration:
+      name: Time below finish threshold
+      description: How long power must stay below the finish threshold.
+      default: "00:01:00"
+      selector:
+        duration: {}
+
+    notification_title:
+      name: Notification title
+      description: >
+        Optional custom title. You can use {appliance_name} as a placeholder.
+      default: ""
+      selector:
+        text: {}
+
+    notification_message:
+      name: Custom notification message
+      description: >
+        Optional custom message. You can use {appliance_name} as a placeholder.
+      default: ""
+      selector:
+        text: {}
+
+    notify_services:
+      name: Notify services
+      description: One or more notify services that should receive the notification.
+      default:
+        - notify.mobile_app_oneplus_nord_4
+        - notify.mobile_app_oneplus_12
+      selector:
+        text:
+          multiple: true
+
+mode: restart
+
+trigger:
+  - platform: numeric_state
+    entity_id: !input power_sensor
+    above: !input start_threshold
+
+variables:
+  appliance_name: !input appliance_name
+  notify_services: !input notify_services
+  custom_title: !input notification_title
+  custom_message: !input notification_message
+  final_title: >-
+    {% if custom_title | trim != '' %}
+      {{ custom_title.replace('{appliance_name}', appliance_name) }}
+    {% else %}
+      {{ appliance_name }} finished
+    {% endif %}
+  final_message: >-
+    {% if custom_message | trim != '' %}
+      {{ custom_message.replace('{appliance_name}', appliance_name) }}
+    {% else %}
+      {{ appliance_name }} is done!
+    {% endif %}
+
+action:
+  - wait_for_trigger:
+      - platform: numeric_state
+        entity_id: !input power_sensor
+        below: !input finish_threshold
+        for: !input finish_duration
+
+  - repeat:
+      for_each: "{{ notify_services }}"
+      sequence:
+        - service: "{{ repeat.item }}"
+          data:
+            title: "{{ final_title }}"
+            message: "{{ final_message }}"
