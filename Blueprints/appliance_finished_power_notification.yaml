@@ -1,3 +1,51 @@
+# ============================================================
+# Blueprint: Appliance finished notification
+#
+# Author: Jorick van Brunschot
+# Version: 1.0.0
+# Created: 2026-03-18
+# Updated: 2026-03-18
+#
+# Description:
+# Sends a notification when an appliance is considered finished
+# based on power consumption.
+#
+# The automation detects when an appliance:
+# 1. First becomes active (power rises above a threshold)
+# 2. Then remains below a lower threshold for a defined duration
+#
+# This prevents false positives and ensures notifications are only
+# sent when an appliance has actually completed its cycle.
+#
+# Features:
+# - Start detection using configurable power threshold
+# - Finish detection using lower threshold + duration
+# - Custom notification title and message
+# - Placeholder support: {appliance_name}
+# - Multiple notify services supported
+# - Fully reusable blueprint
+#
+# Example use cases:
+# - Washing machine finished
+# - Dryer finished
+# - Dishwasher finished
+#
+# Notes:
+# - Works best with smart plugs that report power usage
+# - Ensure correct threshold values per appliance
+# - Typical values:
+#     Start threshold: 3–10W
+#     Finish threshold: 0–2W
+#
+# - Random spikes or standby usage may require tuning thresholds
+#
+# Known limitations:
+# - Requires stable power reporting
+#
+# Changelog:
+# 1.0.0 - Initial version
+#
+# ============================================================
 blueprint:
   name: Appliance finished notification
   description: >

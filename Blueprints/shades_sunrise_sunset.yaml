@@ -1,0 +1,121 @@
+# ============================================================
+# Blueprint: Shades - Sunset close, morning open with random delay
+#
+# Author: Jorick van Brunschot
+# Version: 1.0.0
+# Created: 2026-03-22
+# Updated: 2026-03-22
+#
+# Description:
+# Closes selected covers at sunset and opens them in the morning
+# with a configurable random delay.
+#
+# Features:
+# - Sunset close
+# - Morning open
+# - Random delay
+# - Fully reusable blueprint
+#
+# Notes:
+# - Covers should support position control (0–100)
+# - Random delay prevents predictable behavior
+#
+# ============================================================
+blueprint:
+  name: Shades - Sunset close, morning open with random delay
+  description: >
+    Closes selected shades at sunset and opens them in the morning at a fixed
+    time with a random delay.
+  domain: automation
+
+  input:
+    covers:
+      name: Covers
+      description: Covers that should be controlled.
+      selector:
+        target:
+          entity:
+            domain: cover
+
+    close_position:
+      name: Sunset close position
+      description: Position to set at sunset.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+
+    morning_time:
+      name: Morning open time
+      description: Time when shades start opening.
+      default: "08:00:00"
+      selector:
+        time: {}
+
+    max_random_delay_minutes:
+      name: Max random delay (minutes)
+      description: Random delay between 0 and this value.
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 180
+          step: 1
+          mode: slider
+          unit_of_measurement: min
+
+    morning_position:
+      name: Morning open position
+      description: Position to set in the morning.
+      default: 65
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+
+trigger:
+  - platform: sun
+    event: sunset
+    offset: "00:00:00"
+    id: sunset
+
+  - platform: time
+    at: !input morning_time
+    id: morning
+
+variables:
+  max_random_delay_minutes: !input max_random_delay_minutes
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: sunset
+        sequence:
+          - service: cover.set_cover_position
+            target: !input covers
+            data:
+              position: !input close_position
+
+      - conditions:
+          - condition: trigger
+            id: morning
+        sequence:
+          - delay:
+              minutes: "{{ range(0, max_random_delay_minutes + 1) | random }}"
+
+          - service: cover.set_cover_position
+            target: !input covers
+            data:
+              position: !input morning_position
+
+mode: single

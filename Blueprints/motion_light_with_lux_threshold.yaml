@@ -1,3 +1,56 @@
+# ============================================================
+# Blueprint: Motion light with lux threshold
+#
+# Author: Jorick van Brunschot
+# Version: 1.0.0
+# Created: 2026-03-16
+# Updated: 2026-03-16
+#
+# Description:
+# Controls a light or switch based on motion detection and ambient light levels.
+#
+# The automation turns on a light when motion is detected AND the illuminance
+# (lux) is below a defined threshold. The light is turned off again when motion
+# stops, optionally after a configurable delay.
+#
+# Features:
+# - Motion-based lighting control
+# - Optional lux condition (only turn on when dark enough)
+# - Optional off delay
+# - Supports both lights and switches
+# - Fully reusable blueprint
+#
+# Example use cases:
+# - Hallway lighting
+# - Bathroom lighting
+# - Staircase lighting
+# - Outdoor lighting with dusk condition
+#
+# Behavior:
+# - Motion ON:
+#     → Light turns ON if lux is below threshold OR no lux sensor is configured
+#
+# - Motion OFF:
+#     → Light turns OFF immediately OR after configured delay
+#
+# Notes:
+# - Lux sensor is optional:
+#     If not set, light will always turn on with motion
+#
+# - Recommended lux thresholds:
+#     50–150 lx  → indoor evening/night
+#     150–300 lx → dim daylight
+#
+# - Motion sensor should report reliable ON/OFF states
+#
+# Known limitations:
+# - Rapid motion toggling may restart delay (mode: restart)
+# - Lux sensor must report numeric values
+#
+# Changelog:
+# 1.0.0 - Initial version
+#
+# ============================================================
 blueprint:
   name: Motion light with lux threshold
   description: >
