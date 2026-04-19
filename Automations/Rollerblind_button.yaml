@@ -1,0 +1,177 @@
+# ============================================================
+# Title: Rollerblind all buttons
+# Author: Jorick van Brunschot
+# Version: 1.0
+# Last updated: 2026-04
+#
+# Description:
+# This automation links a IKEA SOMRIG ZHA remote to two Motionblinds roller blinds and supports:
+# - Short press (close / preset position)
+# - Double press (tilt open/close)
+# - Long release (stop + position synchronization)
+#
+# Installation:
+# 1. Go to Settings → Automations & Scenes in Home Assistant
+# 2. Create a new automation
+# 3. Paste this YAML into the editor
+# 4. Adjust the variables below:
+#    - cover_1
+#    - cover_2
+#    - preset_position
+#    - sync_delay_ms
+#
+# Requirements:
+# - ZHA integration enabled
+# - Remote paired via ZHA
+# - Covers support:
+#   - open/close
+#   - tilt (optional)
+#   - current_position (required for synchronization)
+#
+# Note:
+# Both long_release triggers use the same action (id: long_button),
+# which means cover_2 is always synchronized to cover_1.
+#
+# ============================================================
+
+alias: Rollerblind all buttons
+description: ""
+
+triggers:
+  # --- SHORT PRESS ---
+  - device_id: e1315d05ec96b1ed681e951063fbeca3
+    domain: zha
+    type: remote_button_short_press
+    subtype: button_1
+    trigger: device
+    id: short_button_1
+
+  - device_id: e1315d05ec96b1ed681e951063fbeca3
+    domain: zha
+    type: remote_button_short_press
+    subtype: button_2
+    trigger: device
+    id: short_button_2
+
+  # --- DOUBLE PRESS ---
+  - device_id: e1315d05ec96b1ed681e951063fbeca3
+    domain: zha
+    type: remote_button_double_press
+    subtype: button_1
+    trigger: device
+    id: double_button_1
+
+  - device_id: e1315d05ec96b1ed681e951063fbeca3
+    domain: zha
+    type: remote_button_double_press
+    subtype: button_2
+    trigger: device
+    id: double_button_2
+
+  # --- LONG RELEASE ---
+  - device_id: e1315d05ec96b1ed681e951063fbeca3
+    domain: zha
+    type: remote_button_long_release
+    subtype: button_1
+    trigger: device
+    id: long_button
+
+  - device_id: e1315d05ec96b1ed681e951063fbeca3
+    domain: zha
+    type: remote_button_long_release
+    subtype: button_2
+    trigger: device
+    id: long_button
+
+conditions: []
+
+actions:
+  # --- CONFIGURATION VARIABLES ---
+  - variables:
+      # First cover (used as master during synchronization)
+      cover_1: cover.doubleroller_0001
+
+      # Second cover (follows during synchronization)
+      cover_2: cover.doubleroller_0002
+
+      # Preset position for short button 2
+      preset_position: 65
+
+      # Delay before reading position (in milliseconds)
+      sync_delay_ms: 2000
+
+  - choose:
+
+      # --- SHORT BUTTON 1 → close both covers ---
+      - conditions:
+          - condition: trigger
+            id: short_button_1
+        sequence:
+          - action: cover.close_cover
+            target:
+              entity_id:
+                - "{{ cover_1 }}"
+                - "{{ cover_2 }}"
+
+      # --- SHORT BUTTON 2 → set both to preset position ---
+      - conditions:
+          - condition: trigger
+            id: short_button_2
+        sequence:
+          - action: cover.set_cover_position
+            target:
+              entity_id: "{{ cover_1 }}"
+            data:
+              position: "{{ preset_position }}"
+          - action: cover.set_cover_position
+            target:
+              entity_id: "{{ cover_2 }}"
+            data:
+              position: "{{ preset_position }}"
+
+      # --- DOUBLE BUTTON 1 → tilt open ---
+      - conditions:
+          - condition: trigger
+            id: double_button_1
+        sequence:
+          - action: cover.open_cover_tilt
+            target:
+              entity_id:
+                - "{{ cover_1 }}"
+                - "{{ cover_2 }}"
+
+      # --- DOUBLE BUTTON 2 → tilt close ---
+      - conditions:
+          - condition: trigger
+            id: double_button_2
+        sequence:
+          - action: cover.close_cover_tilt
+            target:
+              entity_id:
+                - "{{ cover_1 }}"
+                - "{{ cover_2 }}"
+
+      # --- LONG RELEASE → stop and synchronize ---
+      - conditions:
+          - condition: trigger
+            id: long_button
+        sequence:
+          # Stop both covers immediately
+          - action: cover.stop_cover
+            target:
+              entity_id:
+                - "{{ cover_1 }}"
+                - "{{ cover_2 }}"
+
+          # Wait for position to update
+          - delay:
+              milliseconds: "{{ sync_delay_ms }}"
+
+          # Sync cover_2 to the position of cover_1
+          - action: cover.set_cover_position
+            target:
+              entity_id: "{{ cover_2 }}"
+            data:
+              position: "{{ state_attr(cover_1, 'current_position') | int }}"
+
+mode: single
