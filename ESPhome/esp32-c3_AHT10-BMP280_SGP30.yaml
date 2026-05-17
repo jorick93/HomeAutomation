@@ -1,0 +1,152 @@
+# ============================================================
+# ESPHome: ESP Air 1 - Air Quality Sensor
+#
+# Author: Jorick van Brunschot
+# Version: 1.0.0
+# Created: 2026-05-17
+# Updated: 2026-05-17
+#
+# Description:
+# ESP32-C3 based air quality sensor for Home Assistant.
+# This configuration reads temperature, humidity, air pressure,
+# eCO2 and TVOC values using multiple I2C sensors.
+#
+# Hardware:
+# - ESP32-C3 DevKitM-1
+# - AHT20 temperature and humidity sensor
+# - BMP280 temperature and pressure sensor
+# - SGP30 eCO2 and TVOC air quality sensor
+# - Status/control LED on GPIO2
+#
+# Wiring:
+# - GPIO2 -> LED positive side
+# - LED negative side -> resistor -> GND
+# - GPIO6 -> I2C SDA
+# - GPIO7 -> I2C SCL
+# - 3V3 -> sensor VCC/VIN
+# - GND -> sensor GND
+#
+# Features:
+# - Home Assistant API support
+# - OTA updates
+# - Wi-Fi fallback hotspot
+# - I2C bus scan for debugging
+# - AHT20 temperature and humidity readings
+# - BMP280 pressure readings
+# - SGP30 eCO2 and TVOC readings
+# - Temperature and humidity compensation for SGP30
+#
+# Notes:
+# - Secrets are stored in secrets.yaml and should not be committed.
+# - SGP30 usually appears at I2C address 0x58.
+# - AHT20 usually appears at I2C address 0x38.
+# - BMP280 usually appears at I2C address 0x76 or 0x77.
+# - Let the SGP30 run for a while before trusting long-term trends.
+#
+# ============================================================
+
+substitutions:
+  device_name: esp-air-1
+  friendly_name: ESP Air 1
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "ESP32-C3 air quality sensor with AHT20, BMP280 and SGP30"
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret esp_air_1_api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret esp_air_1_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot in case Wi-Fi connection fails
+  ap:
+    ssid: "${friendly_name} Fallback Hotspot"
+    password: !secret esp_air_1_fallback_ap_password
+
+captive_portal:
+
+# GPIO2 is connected to the positive side of the LED.
+# The negative side of the LED should go through a resistor to GND.
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: led_gpio2_output
+
+light:
+  - platform: binary
+    name: "${friendly_name} LED"
+    id: esp_air_1_led
+    output: led_gpio2_output
+
+# Shared I2C bus:
+# GPIO6 -> SDA for SGP30 and AHT20 + BMP280
+# GPIO7 -> SCL for SGP30 and AHT20 + BMP280
+i2c:
+  sda: GPIO6
+  scl: GPIO7
+  scan: true
+  id: i2c_bus
+
+sensor:
+  # AHT20 temperature and humidity sensor.
+  # Typical I2C address: 0x38
+  - platform: aht10
+    variant: AHT20
+    i2c_id: i2c_bus
+    temperature:
+      name: "${friendly_name} AHT20 Temperature"
+      id: esp_air_1_aht20_temperature
+    humidity:
+      name: "${friendly_name} AHT20 Humidity"
+      id: esp_air_1_aht20_humidity
+    update_interval: 30s
+
+  # BMP280 temperature and pressure sensor.
+  # Common I2C address: 0x76 or 0x77.
+  - platform: bmp280_i2c
+    i2c_id: i2c_bus
+    address: 0x77
+    temperature:
+      name: "${friendly_name} BMP280 Temperature"
+      id: esp_air_1_bmp280_temperature
+      oversampling: 16x
+    pressure:
+      name: "${friendly_name} BMP280 Pressure"
+      id: esp_air_1_bmp280_pressure
+    update_interval: 30s
+
+  # SGP30 air quality sensor.
+  # Typical I2C address: 0x58
+  - platform: sgp30
+    i2c_id: i2c_bus
+    address: 0x58
+    eco2:
+      name: "${friendly_name} SGP30 eCO2"
+      id: esp_air_1_sgp30_eco2
+      accuracy_decimals: 0
+    tvoc:
+      name: "${friendly_name} SGP30 TVOC"
+      id: esp_air_1_sgp30_tvoc
+      accuracy_decimals: 0
+    compensation:
+      temperature_source: esp_air_1_aht20_temperature
+      humidity_source: esp_air_1_aht20_humidity
+    store_baseline: true
+    update_interval: 10s
